@@ -55,10 +55,9 @@ export function isLocalPartnerDomain(domain: string): boolean {
   return d === 'localhost' || d === '127.0.0.1' || d.endsWith('.localhost');
 }
 
-export const PARTNER_SETUP_MESSAGE = `Partner registration requires a hostname Tesla can reach over HTTPS.
+export const PARTNER_SETUP_MESSAGE = `Partner registration uses your relay instance subdomain.
 
-Use your own domain (e.g. tesla.home.example.com) with port 4321 forwarded to this machine.
-localhost cannot be registered — set TESLA_DOMAIN to your hostname in .env or Setup.`;
+Complete setup: connect to the relay, add the shown URLs to developer.tesla.com, then register domain.`;
 
 async function fetchPublicKey(url: string): Promise<{ ok: boolean; hasPem: boolean; error?: string }> {
   try {

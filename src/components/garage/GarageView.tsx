@@ -69,8 +69,8 @@ export default function GarageView() {
               <li>
                 Go to <a href="/setup" className="text-white underline">Setup</a>
               </li>
-              <li>Set your hostname (not localhost) and port-forward 4321</li>
-              <li>Copy HTTPS URLs into developer.tesla.com, then Register Domain</li>
+              <li>Confirm relay URLs are in developer.tesla.com</li>
+              <li>Register domain and wait for the public key check to pass</li>
             </ol>
             <details className="text-xs text-tesla-muted">
               <summary className="cursor-pointer">Technical details</summary>

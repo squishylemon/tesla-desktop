@@ -1,7 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 
 import { getAuthState, getSessionId, SESSION_COOKIE } from '@/lib/session';
-import { isRelayMode } from '@/env';
+import { isRelayConfigured } from '@/env';
 import { relayHeartbeat } from '@/lib/relay';
 
 const PROTECTED_PREFIXES = ['/garage', '/vehicles', '/settings'];
@@ -12,7 +12,7 @@ let lastRelayHeartbeat = 0;
 const HEARTBEAT_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  if (isRelayMode() && Date.now() - lastRelayHeartbeat > HEARTBEAT_INTERVAL_MS) {
+  if (isRelayConfigured() && Date.now() - lastRelayHeartbeat > HEARTBEAT_INTERVAL_MS) {
     lastRelayHeartbeat = Date.now();
     relayHeartbeat().catch(() => {});
   }

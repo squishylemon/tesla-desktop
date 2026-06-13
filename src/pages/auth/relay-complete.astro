@@ -1,34 +1,29 @@
 ---
-import AppLayout from '@/layouts/AppLayout.astro';
-import { exchangeRelayOAuthToken } from '@/lib/relay';
-import { saveUserTokens } from '@/lib/db';
+import { exchangeCodeForTokens } from '@/lib/tesla/auth';
+import { saveUserTokens, saveUserProfile } from '@/lib/db';
 import { createUserSession } from '@/lib/session';
 import { getUserMe } from '@/lib/tesla/vehicles';
-import { saveUserProfile } from '@/lib/db';
-import { isRelayMode } from '@/env';
+import { isRelayConfigured } from '@/env';
 
-if (!isRelayMode()) {
-  return Astro.redirect('/auth/login');
+if (!isRelayConfigured()) {
+  return Astro.redirect('/setup');
 }
 
-const relayToken = Astro.url.searchParams.get('relay_token');
+const code = Astro.url.searchParams.get('code');
+const state = Astro.url.searchParams.get('state');
 const errorParam = Astro.url.searchParams.get('error');
+const savedState = Astro.cookies.get('oauth_state')?.value;
 
 if (errorParam) {
   return Astro.redirect(`/auth/login?error=${encodeURIComponent(errorParam)}`);
 }
 
-if (!relayToken) {
-  return Astro.redirect('/auth/login?error=missing_relay_token');
+if (!code || !state || state !== savedState) {
+  return Astro.redirect('/auth/login?error=invalid_state');
 }
 
 try {
-  const tokens = await exchangeRelayOAuthToken(relayToken);
-  saveUserTokens({
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-    expiresAt: tokens.expiresAt,
-  });
+  await exchangeCodeForTokens(code);
   createUserSession(Astro.cookies);
 
   try {
@@ -38,9 +33,10 @@ try {
     // non-critical
   }
 
+  Astro.cookies.delete('oauth_state', { path: '/' });
   return Astro.redirect('/garage');
 } catch (e) {
-  const message = e instanceof Error ? e.message : 'relay_auth_failed';
+  const message = e instanceof Error ? e.message : 'auth_failed';
   return Astro.redirect(`/auth/login?error=${encodeURIComponent(message)}`);
 }
 ---

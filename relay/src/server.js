@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { getConfig, instanceHostname, parseInstanceFromHost } from './config.js';
 import { createStore } from './store.js';
 import { createCloudflareClient } from './cloudflare.js';
@@ -51,57 +51,12 @@ function requireInstanceAuth(store, req, instanceId) {
   return { row };
 }
 
-function encodeState(payload) {
-  return Buffer.from(JSON.stringify(payload)).toString('base64url');
-}
-
 function decodeState(state) {
   try {
     return JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
   } catch {
     return null;
   }
-}
-
-async function exchangeTeslaCode(config, code) {
-  const body = new URLSearchParams({
-    grant_type: 'authorization_code',
-    client_id: config.tesla.clientId,
-    client_secret: config.tesla.clientSecret,
-    code,
-    redirect_uri: config.oauthRedirectUri,
-    audience: config.tesla.audience,
-  });
-
-  const res = await fetch(`${config.tesla.authUrl}/oauth2/v3/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`Tesla token exchange failed (${res.status}): ${text}`);
-  }
-
-  const data = JSON.parse(text);
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
-  };
-}
-
-function buildAuthorizeUrl(config, state) {
-  const params = new URLSearchParams({
-    client_id: config.tesla.clientId,
-    redirect_uri: config.oauthRedirectUri,
-    response_type: 'code',
-    scope: config.tesla.scopes,
-    state,
-    audience: config.tesla.audience,
-  });
-  return `${config.tesla.authUrl}/oauth2/v3/authorize?${params}`;
 }
 
 function instanceUrls(config, instanceId) {
@@ -114,48 +69,6 @@ function instanceUrls(config, instanceId) {
     redirectUri: config.oauthRedirectUri,
     publicKeyUrl: `${origin}${PUBLIC_KEY_PATH}`,
   };
-}
-
-const FLEET_BASE_URLS = {
-  NA: 'https://fleet-api.prd.na.vn.cloud.tesla.com',
-  EU: 'https://fleet-api.prd.eu.vn.cloud.tesla.com',
-  CN: 'https://fleet-api.prd.cn.vn.cloud.tesla.cn',
-};
-
-async function getPartnerToken(config, region) {
-  const audience = FLEET_BASE_URLS[region] ?? FLEET_BASE_URLS.NA;
-  const body = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: config.tesla.clientId,
-    client_secret: config.tesla.clientSecret,
-    scope: 'openid user_data vehicle_device_data vehicle_location vehicle_cmds vehicle_charging_cmds',
-    audience,
-  });
-  const res = await fetch(`${config.tesla.authUrl}/oauth2/v3/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error(`Partner token failed (${res.status})`);
-  return data.access_token;
-}
-
-async function registerPartnerDomain(config, region, partnerDomain) {
-  const baseUrl = FLEET_BASE_URLS[region] ?? FLEET_BASE_URLS.NA;
-  const token = await getPartnerToken(config, region);
-  const res = await fetch(`${baseUrl}/api/1/partner_accounts`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ domain: partnerDomain }),
-  });
-  if (res.ok || res.status === 409) return;
-  const text = await res.text();
-  throw new Error(`[${region}] Partner registration failed (${res.status}): ${text}`);
 }
 
 async function handleRegister(config, store, cloudflare, req, res) {
@@ -190,7 +103,6 @@ async function handleRegister(config, store, cloudflare, req, res) {
   return json(res, 201, {
     ...instanceUrls(config, row.id),
     instanceSecret: row.secret,
-    relayOAuthAuthorizeUrl: `${config.oauthOrigin}/oauth/authorize?instance=${row.id}`,
   });
 }
 
@@ -223,63 +135,37 @@ async function main() {
         return res.end(row.publicKeyPem);
       }
 
-      // --- OAuth start (fixed auth host) ---
-      if (path === '/oauth/authorize' && req.method === 'GET') {
-        const instanceId = url.searchParams.get('instance');
-        const returnUrl = url.searchParams.get('return_url') ?? 'https://localhost:4321/auth/relay-complete';
-        if (!instanceId || !store.getInstance(instanceId)) {
-          return json(res, 400, { error: 'invalid_instance' });
-        }
-
-        store.touchInstance(instanceId);
-        const nonce = randomBytes(16).toString('hex');
-        const state = encodeState({ instanceId, returnUrl, nonce });
-        res.writeHead(302, { Location: buildAuthorizeUrl(config, state) });
-        return res.end();
-      }
-
-      // --- OAuth callback (fixed auth host; single redirect URI in Tesla portal) ---
+      // --- OAuth callback: forwards code to localhost (token exchange stays on home install) ---
       if (path === '/auth/callback' && req.method === 'GET') {
         const error = url.searchParams.get('error');
         const code = url.searchParams.get('code');
         const stateRaw = url.searchParams.get('state');
         const parsed = stateRaw ? decodeState(stateRaw) : null;
-
-        const fallback = parsed?.returnUrl ?? 'https://localhost:4321/auth/relay-complete';
+        const returnUrl = parsed?.returnUrl ?? 'https://localhost:4321/auth/relay-complete';
 
         if (error) {
-          const loc = new URL(fallback);
+          const loc = new URL(returnUrl);
           loc.searchParams.set('error', error);
           res.writeHead(302, { Location: loc.toString() });
           return res.end();
         }
 
-        if (!code || !parsed?.instanceId || !store.getInstance(parsed.instanceId)) {
-          const loc = new URL(fallback);
-          loc.searchParams.set('error', 'invalid_oauth_state');
+        if (!code) {
+          const loc = new URL(returnUrl);
+          loc.searchParams.set('error', 'missing_code');
           res.writeHead(302, { Location: loc.toString() });
           return res.end();
         }
 
-        try {
-          const tokens = await exchangeTeslaCode(config, code);
-          const relayToken = randomBytes(24).toString('hex');
-          store.savePendingOAuth(relayToken, {
-            instanceId: parsed.instanceId,
-            ...tokens,
-          });
+        if (parsed?.instanceId && store.getInstance(parsed.instanceId)) {
           store.touchInstance(parsed.instanceId);
-
-          const loc = new URL(fallback);
-          loc.searchParams.set('relay_token', relayToken);
-          res.writeHead(302, { Location: loc.toString() });
-          return res.end();
-        } catch (e) {
-          const loc = new URL(fallback);
-          loc.searchParams.set('error', e instanceof Error ? e.message : 'token_exchange_failed');
-          res.writeHead(302, { Location: loc.toString() });
-          return res.end();
         }
+
+        const loc = new URL(returnUrl);
+        loc.searchParams.set('code', code);
+        if (stateRaw) loc.searchParams.set('state', stateRaw);
+        res.writeHead(302, { Location: loc.toString() });
+        return res.end();
       }
 
       // --- API ---
@@ -305,49 +191,6 @@ async function main() {
         }
         store.setPublicKey(auth.row.id, body.publicKeyPem.trim());
         return json(res, 200, { ok: true, ...instanceUrls(config, auth.row.id) });
-      }
-
-      const oauthExchangeMatch = /^\/api\/v1\/instances\/([a-f0-9]+)\/oauth\/exchange$/.exec(path);
-      if (oauthExchangeMatch && req.method === 'POST') {
-        const auth = requireInstanceAuth(store, req, oauthExchangeMatch[1]);
-        if (auth.error) return json(res, auth.status, { error: auth.error });
-        const body = await readBody(req);
-        const pending = body.relayToken ? store.consumePendingOAuth(body.relayToken) : null;
-        if (!pending || pending.instanceId !== auth.row.id) {
-          return json(res, 400, { error: 'invalid_relay_token' });
-        }
-        store.touchInstance(auth.row.id);
-        return json(res, 200, {
-          accessToken: pending.accessToken,
-          refreshToken: pending.refreshToken,
-          expiresAt: pending.expiresAt,
-        });
-      }
-
-      const partnerMatch = /^\/api\/v1\/instances\/([a-f0-9]+)\/partner\/register$/.exec(path);
-      if (partnerMatch && req.method === 'POST') {
-        const auth = requireInstanceAuth(store, req, partnerMatch[1]);
-        if (auth.error) return json(res, auth.status, { error: auth.error });
-        if (!auth.row.publicKeyPem) {
-          return json(res, 400, { error: 'public_key_not_uploaded' });
-        }
-        const partnerDomain = instanceHostname(auth.row.id, config.baseDomain);
-        const regions = config.tesla.region === 'CN' ? ['CN'] : ['NA', 'EU'];
-        const registered = [];
-        const errors = [];
-        for (const region of regions) {
-          try {
-            await registerPartnerDomain(config, region, partnerDomain);
-            registered.push(region);
-          } catch (e) {
-            errors.push(e instanceof Error ? e.message : String(e));
-          }
-        }
-        if (registered.length === 0) {
-          return json(res, 502, { error: 'partner_registration_failed', details: errors });
-        }
-        store.touchInstance(auth.row.id);
-        return json(res, 200, { ok: true, registeredRegions: registered, partnerDomain });
       }
 
       const infoMatch = /^\/api\/v1\/instances\/([a-f0-9]+)$/.exec(path);

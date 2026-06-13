@@ -1,6 +1,4 @@
 import type { APIRoute } from 'astro';
-import { isRelayMode } from '@/env';
-import { saveDeveloperConfig } from '@/lib/db';
 import { ensureKeyPair, getPublicKeyContent } from '@/lib/keys';
 import {
   getStoredRelayInstance,
@@ -8,11 +6,13 @@ import {
   relayHeartbeat,
   uploadRelayPublicKey,
 } from '@/lib/relay';
-import { getEnv } from '@/env';
+import { isRelayConfigured } from '@/env';
 
 export const POST: APIRoute = async () => {
-  if (!isRelayMode()) {
-    return new Response(JSON.stringify({ error: 'Relay mode is not enabled' }), { status: 400 });
+  if (!isRelayConfigured()) {
+    return new Response(JSON.stringify({ error: 'RELAY_API_URL is not configured' }), {
+      status: 400,
+    });
   }
 
   try {
@@ -26,25 +26,6 @@ export const POST: APIRoute = async () => {
     if (publicKey) {
       await uploadRelayPublicKey(publicKey);
     }
-
-    const { relaySharedClientId, relaySharedClientSecret, relaySharedRegion } = getEnv();
-    if (!relaySharedClientId || !relaySharedClientSecret) {
-      return new Response(
-        JSON.stringify({
-          error: 'RELAY_SHARED_CLIENT_ID and RELAY_SHARED_CLIENT_SECRET must be set',
-        }),
-        { status: 500 },
-      );
-    }
-
-    saveDeveloperConfig({
-      clientId: relaySharedClientId,
-      clientSecret: relaySharedClientSecret,
-      region: relaySharedRegion,
-      redirectUri: instance.redirectUri,
-      domain: instance.partnerDomain,
-      partnerRegistered: false,
-    });
 
     await relayHeartbeat();
 

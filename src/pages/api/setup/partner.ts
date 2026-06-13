@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
-import { isRelayMode } from '@/env';
+import { isRelayConfigured } from '@/env';
 import { setConfigValue } from '@/lib/db';
 import { registerPartnerAccount } from '@/lib/tesla/auth';
-import { checkPartnerPrerequisites, getPartnerSetupHints } from '@/lib/tesla/partner';
-import { getStoredRelayInstance, registerRelayPartner } from '@/lib/relay';
 import { Agent } from 'node:https';
+import { getStoredRelayInstance } from '@/lib/relay';
 
 const insecureAgent = new Agent({ rejectUnauthorized: false });
 
@@ -21,7 +20,7 @@ async function checkRelayPrerequisites() {
         publicKeyHasPem: false,
         publicKeyError: 'Relay instance not registered',
       },
-      warnings: ['Run relay setup first'],
+      warnings: ['Connect to the relay in setup first'],
     };
   }
 
@@ -43,10 +42,7 @@ async function checkRelayPrerequisites() {
         publicKeyHasPem: hasPem,
         publicKeyError: res.ok && hasPem ? undefined : `HTTP ${res.status}`,
       },
-      warnings: [
-        'Partner domain and public key are hosted on the relay.',
-        'OAuth uses the shared relay redirect URL — no per-home DNS needed for sign-in.',
-      ],
+      warnings: ['Public key is hosted on the relay at your instance subdomain'],
     };
   } catch (e) {
     return {
@@ -59,24 +55,18 @@ async function checkRelayPrerequisites() {
         publicKeyHasPem: false,
         publicKeyError: e instanceof Error ? e.message : 'Fetch failed',
       },
-      warnings: ['Public key not reachable yet — DNS may still be propagating'],
+      warnings: ['DNS may still be propagating — wait a few minutes and try again'],
     };
   }
 }
 
 export const GET: APIRoute = async () => {
   try {
-    const prerequisites = isRelayMode()
-      ? await checkRelayPrerequisites()
-      : await checkPartnerPrerequisites();
-    return new Response(
-      JSON.stringify({
-        prerequisites,
-        hints: getPartnerSetupHints(),
-        relayMode: isRelayMode(),
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    const prerequisites = await checkRelayPrerequisites();
+    return new Response(JSON.stringify({ prerequisites }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (e) {
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : 'Check failed' }),
@@ -87,34 +77,26 @@ export const GET: APIRoute = async () => {
 
 export const POST: APIRoute = async () => {
   try {
-    if (isRelayMode()) {
-      const result = await registerRelayPartner();
-      setConfigValue('partner_registered', 'true');
-      const prerequisites = await checkRelayPrerequisites();
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          registeredRegions: result.registeredRegions,
-          prerequisites,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
+    if (!isRelayConfigured()) {
+      return new Response(JSON.stringify({ error: 'RELAY_API_URL is not configured' }), {
+        status: 400,
+      });
     }
 
-    const result = await registerPartnerAccount();    return new Response(
+    const result = await registerPartnerAccount();
+    setConfigValue('partner_registered', 'true');
+    const prerequisites = await checkRelayPrerequisites();
+    return new Response(
       JSON.stringify({
         ok: true,
         registeredRegions: result.registeredRegions,
-        prerequisites: result.prerequisites,
+        prerequisites,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   } catch (e) {
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : 'Registration failed',
-        hints: getPartnerSetupHints(),
-      }),
+      JSON.stringify({ error: e instanceof Error ? e.message : 'Registration failed' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
     );
   }

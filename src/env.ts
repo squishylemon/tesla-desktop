@@ -124,12 +124,14 @@ export function getEnv() {
     vehicleCommandProxyCa: process.env.VEHICLE_COMMAND_PROXY_CA ?? '',
     relayApiUrl: process.env.RELAY_API_URL?.trim().replace(/\/+$/, '') ?? '',
     relayBootstrapSecret: process.env.RELAY_BOOTSTRAP_SECRET?.trim() ?? '',
-    relaySharedClientId: process.env.RELAY_SHARED_CLIENT_ID?.trim() ?? '',
-    relaySharedClientSecret: process.env.RELAY_SHARED_CLIENT_SECRET?.trim() ?? '',
-    relaySharedRegion: (process.env.RELAY_SHARED_REGION ?? 'NA') as TeslaRegion,
   };
 }
 
-export function isRelayMode(): boolean {
+export function isRelayConfigured(): boolean {
   return !!getEnv().relayApiUrl;
+}
+
+/** @deprecated use isRelayConfigured */
+export function isRelayMode(): boolean {
+  return isRelayConfigured();
 }

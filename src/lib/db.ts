@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { getEnv, isRelayMode, resolveRegion, resolveRedirectUri, normalizeAppDomain, isStaleTunnelDomain, type StoredRegion, type TeslaRegion } from '@/env';
+import { getEnv, isRelayConfigured, resolveRegion, resolveRedirectUri, normalizeAppDomain, isStaleTunnelDomain, type StoredRegion, type TeslaRegion } from '@/env';
 import { decrypt, encrypt } from '@/lib/crypto';
 
 export interface DeveloperConfig {
@@ -99,7 +99,7 @@ export function getDeveloperConfig(): DeveloperConfig | null {
   const { domain: envDomain } = getEnv();
   let storedDomain = normalizeAppDomain(getConfigValue('domain') ?? envDomain);
 
-  if (isRelayMode()) {
+  if (isRelayConfigured()) {
     const relayDomain = getConfigValue('relay_partner_domain');
     const relayRedirect = getConfigValue('relay_redirect_uri');
     if (relayDomain) storedDomain = normalizeAppDomain(relayDomain);

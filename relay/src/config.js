@@ -27,26 +27,6 @@ export function getConfig() {
     allowedIps: parseAllowedIps(process.env.ALLOWED_IPS),
     inactivityDays: Number(process.env.RELAY_INACTIVITY_DAYS ?? 30),
     cleanupIntervalHours: Number(process.env.RELAY_CLEANUP_INTERVAL_HOURS ?? 6),
-    tesla: {
-      clientId: required('TESLA_CLIENT_ID', process.env.TESLA_CLIENT_ID),
-      clientSecret: required('TESLA_CLIENT_SECRET', process.env.TESLA_CLIENT_SECRET),
-      region: process.env.TESLA_REGION ?? 'NA',
-      authUrl: 'https://fleet-auth.prd.vn.cloud.tesla.com',
-      audience: {
-        NA: 'https://fleet-api.prd.na.vn.cloud.tesla.com',
-        EU: 'https://fleet-api.prd.eu.vn.cloud.tesla.com',
-        CN: 'https://fleet-api.prd.cn.vn.cloud.tesla.cn',
-      }[process.env.TESLA_REGION ?? 'NA'] ?? 'https://fleet-api.prd.na.vn.cloud.tesla.com',
-      scopes: [
-        'openid',
-        'offline_access',
-        'user_data',
-        'vehicle_device_data',
-        'vehicle_location',
-        'vehicle_cmds',
-        'vehicle_charging_cmds',
-      ].join(' '),
-    },
     cloudflare: {
       apiToken: process.env.CLOUDFLARE_API_TOKEN?.trim() ?? '',
       zoneId: process.env.CLOUDFLARE_ZONE_ID?.trim() ?? '',

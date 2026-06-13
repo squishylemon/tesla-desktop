@@ -3,33 +3,28 @@ import AppLayout from '@/layouts/AppLayout.astro';
 import { getDeveloperConfig } from '@/lib/db';
 import { buildAuthorizeUrl } from '@/lib/tesla/auth';
 import { generateSessionId } from '@/lib/crypto';
-import { isRelayMode, getEnv } from '@/env';
-import { buildRelayAuthorizeUrl } from '@/lib/relay';
+import { isRelayConfigured } from '@/env';
 
 const config = getDeveloperConfig();
 if (!config) {
   return Astro.redirect('/setup');
 }
 
-const errorParam = Astro.url.searchParams.get('error');
-
-let authorizeUrl: string;
-if (isRelayMode()) {
-  const { port, enableHttps } = getEnv();
-  const scheme = enableHttps ? 'https' : 'http';
-  const returnUrl = `${scheme}://localhost:${port}/auth/relay-complete`;
-  authorizeUrl = buildRelayAuthorizeUrl(returnUrl);
-} else {
-  const state = generateSessionId();
-  authorizeUrl = buildAuthorizeUrl(state);
-  Astro.cookies.set('oauth_state', state, {
-    httpOnly: true,
-    secure: import.meta.env.PROD || process.env.ENABLE_HTTPS !== 'false',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 600,
-  });
+if (!isRelayConfigured()) {
+  return Astro.redirect('/setup');
 }
+
+const errorParam = Astro.url.searchParams.get('error');
+const state = generateSessionId();
+const authorizeUrl = buildAuthorizeUrl(state);
+
+Astro.cookies.set('oauth_state', state, {
+  httpOnly: true,
+  secure: import.meta.env.PROD || process.env.ENABLE_HTTPS !== 'false',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: 600,
+});
 ---
 
 <AppLayout title="Sign In — Tesla Desktop" showNav={false}>
@@ -49,7 +44,7 @@ if (isRelayMode()) {
         Sign In
       </a>
       <p class="mt-6 text-xs text-tesla-muted">
-        You'll be redirected to Tesla to authorize this self-hosted application.
+        You'll be redirected to Tesla, then back to localhost via the relay.
       </p>
     </div>
   </div>

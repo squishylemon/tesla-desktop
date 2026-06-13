@@ -8,7 +8,6 @@ export interface RelayInstance {
   redirectUri: string;
   allowedOrigin: string;
   publicKeyUrl: string;
-  relayOAuthAuthorizeUrl: string;
 }
 
 export function getStoredRelayInstance(): RelayInstance | null {
@@ -27,9 +26,6 @@ export function getStoredRelayInstance(): RelayInstance | null {
     publicKeyUrl:
       getConfigValue('relay_public_key_url') ??
       `https://${partnerDomain}/.well-known/appspecific/com.tesla.3p.public-key.pem`,
-    relayOAuthAuthorizeUrl:
-      getConfigValue('relay_oauth_authorize_url') ??
-      `${relayApiUrl}/oauth/authorize?instance=${instanceId}`,
   };
 }
 
@@ -40,7 +36,6 @@ export function saveRelayInstance(data: RelayInstance) {
   setConfigValue('relay_redirect_uri', data.redirectUri);
   setConfigValue('relay_allowed_origin', data.allowedOrigin);
   setConfigValue('relay_public_key_url', data.publicKeyUrl);
-  setConfigValue('relay_oauth_authorize_url', data.relayOAuthAuthorizeUrl);
 }
 
 async function relayFetch(path: string, init: RequestInit = {}) {
@@ -84,7 +79,6 @@ export async function registerRelayInstance(): Promise<RelayInstance> {
     redirectUri: data.redirectUri,
     allowedOrigin: data.allowedOrigin,
     publicKeyUrl: data.publicKeyUrl,
-    relayOAuthAuthorizeUrl: data.relayOAuthAuthorizeUrl,
   };
   saveRelayInstance(instance);
   return instance;
@@ -112,42 +106,4 @@ export async function uploadRelayPublicKey(publicKeyPem: string): Promise<void> 
     },
     body: JSON.stringify({ publicKeyPem }),
   });
-}
-
-export async function registerRelayPartner(): Promise<{ registeredRegions: string[] }> {
-  const instance = getStoredRelayInstance();
-  if (!instance) throw new Error('Relay instance not registered');
-
-  const data = (await relayFetch(
-    `/api/v1/instances/${instance.instanceId}/partner/register`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${instance.instanceSecret}` },
-    },
-  )) as { registeredRegions: string[] };
-
-  return data;
-}
-
-export async function exchangeRelayOAuthToken(relayToken: string) {
-  const instance = getStoredRelayInstance();
-  if (!instance) throw new Error('Relay instance not registered');
-
-  return (await relayFetch(`/api/v1/instances/${instance.instanceId}/oauth/exchange`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${instance.instanceSecret}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ relayToken }),
-  })) as { accessToken: string; refreshToken: string; expiresAt: number };
-}
-
-export function buildRelayAuthorizeUrl(localReturnUrl: string): string {
-  const instance = getStoredRelayInstance();
-  if (!instance) throw new Error('Relay instance not registered');
-
-  const url = new URL(instance.relayOAuthAuthorizeUrl);
-  url.searchParams.set('return_url', localReturnUrl);
-  return url.toString();
 }

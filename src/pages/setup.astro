@@ -1,19 +1,18 @@
 ---
 import AppLayout from '@/layouts/AppLayout.astro';
 import SetupWizard from '@/components/setup/SetupWizard';
-import { getEnv, isRelayMode } from '@/env';
+import { getEnv, isRelayConfigured } from '@/env';
 import { getDeveloperConfig } from '@/lib/db';
-import { getPublicKeyCheckUrl, getAppOrigin } from '@/lib/tesla/partner';
 import { ensureKeyPair, getPublicKeyContent } from '@/lib/keys';
 import { getStoredRelayInstance } from '@/lib/relay';
 
 ensureKeyPair();
 const config = getDeveloperConfig();
 const publicKey = getPublicKeyContent();
-const relayMode = isRelayMode();
-const relayInstance = relayMode ? getStoredRelayInstance() : null;
-const appOrigin = config ? getAppOrigin(config) : getEnv().redirectUri.replace(/\/auth\/callback$/, '');
-const publicKeyUrl = relayInstance?.publicKeyUrl ?? (config ? getPublicKeyCheckUrl(config) : `${appOrigin}/.well-known/appspecific/com.tesla.3p.public-key.pem`);
+const relayConfigured = isRelayConfigured();
+const relayInstance = getStoredRelayInstance();
+const { relayApiUrl } = getEnv();
+const publicKeyUrl = relayInstance?.publicKeyUrl ?? null;
 ---
 
 <AppLayout title="Setup — Tesla Desktop" showNav={false}>
@@ -23,8 +22,8 @@ const publicKeyUrl = relayInstance?.publicKeyUrl ?? (config ? getPublicKeyCheckU
       initialConfig={config}
       publicKey={publicKey}
       publicKeyUrl={publicKeyUrl}
-      appOrigin={appOrigin}
-      relayMode={relayMode}
+      relayConfigured={relayConfigured}
+      relayApiUrl={relayApiUrl}
       relayInstanceId={relayInstance?.instanceId ?? null}
     />
   </div>
