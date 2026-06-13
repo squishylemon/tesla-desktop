@@ -1,0 +1,11 @@
+---
+import AppLayout from '@/layouts/AppLayout.astro';
+import GarageView from '@/components/garage/GarageView';
+---
+
+<AppLayout title="Vehicles — Tesla Desktop">
+  <div class="mx-auto max-w-content px-6 py-8">
+    <h1 class="mb-8 text-2xl font-semibold">My Vehicles</h1>
+    <GarageView client:load />
+  </div>
+</AppLayout>

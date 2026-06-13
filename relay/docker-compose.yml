@@ -1,0 +1,14 @@
+# Standalone relay deploy (optional — prefer root: npm run cloudsetup)
+services:
+  relay:
+    build: .
+    ports:
+      - "${RELAY_PORT:-8443}:8443"
+    volumes:
+      - relay-data:/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  relay-data:

@@ -1,0 +1,37 @@
+---
+import { exchangeCodeForTokens } from '@/lib/tesla/auth';
+import { createUserSession } from '@/lib/session';
+import { getUserMe } from '@/lib/tesla/vehicles';
+import { saveUserProfile } from '@/lib/db';
+
+const code = Astro.url.searchParams.get('code');
+const state = Astro.url.searchParams.get('state');
+const error = Astro.url.searchParams.get('error');
+const savedState = Astro.cookies.get('oauth_state')?.value;
+
+if (error) {
+  return Astro.redirect(`/auth/login?error=${encodeURIComponent(error)}`);
+}
+
+if (!code || !state || state !== savedState) {
+  return Astro.redirect('/auth/login?error=invalid_state');
+}
+
+try {
+  await exchangeCodeForTokens(code);
+  createUserSession(Astro.cookies);
+
+  try {
+    const me = await getUserMe();
+    saveUserProfile({ email: me.email, fullName: me.full_name });
+  } catch {
+    // profile fetch is non-critical
+  }
+
+  Astro.cookies.delete('oauth_state', { path: '/' });
+  return Astro.redirect('/garage');
+} catch (e) {
+  const message = e instanceof Error ? e.message : 'auth_failed';
+  return Astro.redirect(`/auth/login?error=${encodeURIComponent(message)}`);
+}
+---

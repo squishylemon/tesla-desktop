@@ -1,0 +1,11 @@
+:root {
+  --tesla-bg: #000000;
+  --tesla-surface: #111111;
+  --tesla-surface-elevated: #1a1a1a;
+  --tesla-border: rgba(255, 255, 255, 0.1);
+  --tesla-text: #ffffff;
+  --tesla-text-muted: #8e8e93;
+  --tesla-red: #e82127;
+  --tesla-green: #3dda6e;
+  --tesla-radius: 12px;
+}

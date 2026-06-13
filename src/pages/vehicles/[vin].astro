@@ -1,0 +1,13 @@
+---
+import AppLayout from '@/layouts/AppLayout.astro';
+import VehicleDetail from '@/components/vehicle/VehicleDetail';
+
+const { vin } = Astro.params;
+if (!vin) return Astro.redirect('/garage');
+---
+
+<AppLayout title="Vehicle — Tesla Desktop">
+  <div class="mx-auto max-w-content px-6 py-8">
+    <VehicleDetail client:load vin={vin} />
+  </div>
+</AppLayout>

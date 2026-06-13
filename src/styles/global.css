@@ -1,0 +1,61 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-tesla-bg text-tesla-text antialiased;
+  }
+
+  body {
+    @apply min-h-screen font-sans;
+  }
+}
+
+@layer components {
+  .tesla-card {
+    @apply rounded-xl border border-white/10 bg-tesla-surface p-6;
+  }
+
+  .tesla-btn {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium transition-colors;
+  }
+
+  .tesla-btn-primary {
+    @apply tesla-btn bg-white text-black hover:bg-white/90;
+  }
+
+  .tesla-btn-secondary {
+    @apply tesla-btn border border-white/20 bg-transparent text-white hover:bg-white/10;
+  }
+
+  .tesla-btn-danger {
+    @apply tesla-btn bg-tesla-red text-white hover:bg-tesla-red/90;
+  }
+
+  .tesla-input {
+    @apply w-full rounded-lg border border-white/10 bg-tesla-surface px-4 py-3 text-white placeholder:text-tesla-muted focus:border-white/30 focus:outline-none;
+  }
+
+  .tesla-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .tesla-badge-live {
+    @apply tesla-badge bg-tesla-green/20 text-tesla-green;
+  }
+
+  .tesla-badge-cached {
+    @apply tesla-badge bg-white/10 text-tesla-muted;
+  }
+
+  .tesla-badge-asleep {
+    @apply tesla-badge bg-blue-500/20 text-blue-400;
+  }
+
+  .tesla-badge-offline {
+    @apply tesla-badge bg-white/5 text-tesla-muted;
+  }
+}

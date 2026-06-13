@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+.astro/
+
+# data & secrets
+data/
+.env
+.env.local
+
+# keys generated at runtime
+public/.well-known/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*

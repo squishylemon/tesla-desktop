@@ -1,0 +1,52 @@
+---
+import '@/styles/global.css';
+
+interface Props {
+  title?: string;
+  showNav?: boolean;
+}
+
+const { title = 'Tesla', showNav = true } = Astro.props;
+const pathname = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Tesla Desktop — self-hosted vehicle dashboard" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>{title}</title>
+  </head>
+  <body>
+    {showNav && (
+      <header class="sticky top-0 z-50 border-b border-white/10 bg-black/90 backdrop-blur-md">
+        <div class="mx-auto flex h-14 max-w-content items-center justify-between px-6">
+          <a href="/garage" class="flex items-center gap-3">
+            <img src="/imgs/logo_white.png" alt="Tesla" class="h-4" />
+          </a>
+          <nav class="flex items-center gap-6 text-sm">
+            <a
+              href="/garage"
+              class:list={['text-tesla-muted hover:text-white transition-colors', pathname.startsWith('/garage') && 'text-white']}
+            >
+              Vehicles
+            </a>
+            <a
+              href="/settings"
+              class:list={['text-tesla-muted hover:text-white transition-colors', pathname.startsWith('/settings') && 'text-white']}
+            >
+              Settings
+            </a>
+          </nav>
+        </div>
+      </header>
+    )}
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

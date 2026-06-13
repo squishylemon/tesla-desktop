@@ -1,0 +1,46 @@
+---
+import AppLayout from '@/layouts/AppLayout.astro';
+import { exchangeRelayOAuthToken } from '@/lib/relay';
+import { saveUserTokens } from '@/lib/db';
+import { createUserSession } from '@/lib/session';
+import { getUserMe } from '@/lib/tesla/vehicles';
+import { saveUserProfile } from '@/lib/db';
+import { isRelayMode } from '@/env';
+
+if (!isRelayMode()) {
+  return Astro.redirect('/auth/login');
+}
+
+const relayToken = Astro.url.searchParams.get('relay_token');
+const errorParam = Astro.url.searchParams.get('error');
+
+if (errorParam) {
+  return Astro.redirect(`/auth/login?error=${encodeURIComponent(errorParam)}`);
+}
+
+if (!relayToken) {
+  return Astro.redirect('/auth/login?error=missing_relay_token');
+}
+
+try {
+  const tokens = await exchangeRelayOAuthToken(relayToken);
+  saveUserTokens({
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresAt: tokens.expiresAt,
+  });
+  createUserSession(Astro.cookies);
+
+  try {
+    const me = await getUserMe();
+    saveUserProfile({ email: me.email, fullName: me.full_name });
+  } catch {
+    // non-critical
+  }
+
+  return Astro.redirect('/garage');
+} catch (e) {
+  const message = e instanceof Error ? e.message : 'relay_auth_failed';
+  return Astro.redirect(`/auth/login?error=${encodeURIComponent(message)}`);
+}
+---
