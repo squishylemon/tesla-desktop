@@ -54,7 +54,13 @@ Then run the install again without `sudo`. One-off alternative:
 DOCKER_CMD="sudo docker" curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-relay.sh | sh
 ```
 
-Pulls `ghcr.io/squishylemon/tesla-desktop/relay:latest`. Edit `tesla-desktop-relay/.env`, point DNS at your server, recreate the container.
+Pulls `ghcr.io/squishylemon/tesla-desktop/relay:latest`. The relay serves **HTTPS on port 8443** with an auto-generated certificate. Edit `tesla-desktop-relay/.env`, point DNS at your server, recreate the container.
+
+```bash
+curl -k https://localhost:8443/health
+```
+
+With Cloudflare proxy, set SSL mode to **Full** (origin speaks HTTPS).
 
 ```bash
 cd tesla-desktop-relay

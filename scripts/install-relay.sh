@@ -44,8 +44,8 @@ echo "Starting relay..."
 docker_compose -f compose.yml up -d
 
 echo ""
-echo "Relay is running on port ${RELAY_PORT:-8443}"
-echo "Health: curl http://localhost:${RELAY_PORT:-8443}/health"
+echo "Relay is running on https://localhost:${RELAY_PORT:-8443}"
+echo "Health: curl -k https://localhost:${RELAY_PORT:-8443}/health"
 echo ""
 echo "Edit .env in ${INSTALL_DIR}, then: docker compose -f compose.yml up -d --force-recreate"
 echo "Logs: docker compose -f compose.yml logs -f relay"

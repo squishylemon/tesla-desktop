@@ -1,10 +1,11 @@
-import { createServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
 import { timingSafeEqual } from 'node:crypto';
 import { getConfig, instanceHostname, parseInstanceFromHost } from './config.js';
 import { createStore } from './store.js';
 import { createCloudflareClient } from './cloudflare.js';
 import { startCleanupJob } from './cleanup.js';
 import { getClientIp, isIpAllowed } from './allowed-ips.js';
+import { loadTlsCredentials } from './tls.js';
 
 const PUBLIC_KEY_PATH = '/.well-known/appspecific/com.tesla.3p.public-key.pem';
 
@@ -108,14 +109,15 @@ async function handleRegister(config, store, cloudflare, req, res) {
 
 async function main() {
   const config = getConfig();
+  const tls = loadTlsCredentials(config.tlsKeyPath, config.tlsCertPath);
   const store = createStore(config.storePath);
   const cloudflare = createCloudflareClient(config);
 
   startCleanupJob({ store, cloudflare, config });
 
-  const server = createServer(async (req, res) => {
+  const handler = async (req, res) => {
     try {
-      const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
+      const url = new URL(req.url ?? '/', `https://${req.headers.host}`);
       const host = req.headers.host ?? '';
       const path = url.pathname;
 
@@ -220,12 +222,13 @@ async function main() {
     } catch (e) {
       json(res, 500, { error: e instanceof Error ? e.message : 'internal_error' });
     }
-  });
+  };
+
+  const server = createHttpsServer(tls, handler);
 
   server.listen(config.port, config.host, () => {
-    console.log(`Tesla Desktop Relay listening on http://${config.host}:${config.port}`);
-    console.log(`Base domain: ${config.baseDomain}`);
-    console.log(`OAuth host: ${config.oauthHost}`);
+    console.log(`Tesla Desktop Relay listening on https://${config.host}:${config.port}`);
+    console.log(`OAuth origin: ${config.oauthOrigin}`);
     console.log(`Cloudflare DNS: ${cloudflare.enabled ? 'enabled' : 'disabled'}`);
     console.log(
       `Registration IPs: ${config.allowedIps.allowAll ? '*' : config.allowedIps.entries.join(', ')}`,

@@ -2,15 +2,15 @@
 
 Docker image: `ghcr.io/squishylemon/tesla-desktop/relay:latest`
 
+Serves **HTTPS only** on port 8443. A self-signed certificate is generated on first run for `RELAY_OAUTH_HOST` and `*.RELAY_BASE_DOMAIN`.
+
 ## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-relay.sh | sh
 ```
 
-Creates `tesla-desktop-relay/`, pulls the image, starts the container.
-
-Edit `tesla-desktop-relay/.env`:
+## relay/.env
 
 ```env
 ALLOWED_IPS=*
@@ -23,23 +23,29 @@ RELAY_INACTIVITY_DAYS=30
 RELAY_CLEANUP_INTERVAL_HOURS=6
 ```
 
-Apply changes:
-
-```bash
-cd tesla-desktop-relay
-docker compose -f compose.yml up -d --force-recreate
-```
-
 ## DNS
 
 ```
-auth.yourdomain.com  →  your relay server
+auth.yourdomain.com  →  your relay server:8443
 ```
 
-Instance subdomains (`abc123.yourdomain.com`) are created automatically via Cloudflare.
+With Cloudflare proxy (orange cloud), use SSL mode **Full** so Cloudflare connects to your origin over HTTPS.
+
+## Custom certificates
+
+Mount your own Let's Encrypt or Cloudflare origin certs:
+
+```env
+RELAY_TLS_KEY=/data/certs/privkey.pem
+RELAY_TLS_CERT=/data/certs/fullchain.pem
+```
+
+## Health check
+
+```bash
+curl -k https://localhost:8443/health
+```
 
 ## Home installs
 
-Users set `RELAY_API_URL=https://auth.yourdomain.com` when installing Tesla Desktop.
-
-Each user adds the relay Allowed Origin and Redirect URL to their own Tesla developer application during setup.
+Users set `RELAY_API_URL=https://auth.yourdomain.com` (port 443 via reverse proxy, or `:8443` if exposed directly).

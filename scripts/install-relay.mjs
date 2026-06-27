@@ -33,5 +33,5 @@ for (const args of [
 }
 
 console.log('');
-console.log('Relay: http://localhost:8443/health');
+console.log(`Relay: https://localhost:8443/health (self-signed — use curl -k)`);
 console.log('Edit tesla-desktop-relay/.env then: docker compose -f tesla-desktop-relay/compose.yml up -d --force-recreate');

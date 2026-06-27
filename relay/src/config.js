@@ -14,6 +14,9 @@ export function getConfig() {
   const baseDomain = required('RELAY_BASE_DOMAIN', process.env.RELAY_BASE_DOMAIN);
   const oauthHost = required('RELAY_OAUTH_HOST', process.env.RELAY_OAUTH_HOST);
 
+  const tlsKeyPath = process.env.RELAY_TLS_KEY ?? join(dataDir, 'relay-tls-key.pem');
+  const tlsCertPath = process.env.RELAY_TLS_CERT ?? join(dataDir, 'relay-tls-cert.pem');
+
   return {
     host: process.env.HOST ?? '0.0.0.0',
     port: Number(process.env.PORT ?? 8443),
@@ -23,6 +26,8 @@ export function getConfig() {
     oauthHost,
     oauthOrigin: `https://${oauthHost}`,
     oauthRedirectUri: `https://${oauthHost}/auth/callback`,
+    tlsKeyPath,
+    tlsCertPath,
     bootstrapSecret: process.env.RELAY_BOOTSTRAP_SECRET?.trim() ?? '',
     allowedIps: parseAllowedIps(process.env.ALLOWED_IPS),
     inactivityDays: Number(process.env.RELAY_INACTIVITY_DAYS ?? 30),
