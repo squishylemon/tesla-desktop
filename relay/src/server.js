@@ -6,6 +6,7 @@ import { createCloudflareClient } from './cloudflare.js';
 import { startCleanupJob } from './cleanup.js';
 import { getClientIp, isIpAllowed } from './allowed-ips.js';
 import { loadTlsCredentials } from './tls.js';
+import { printCloudflareSslHints } from './ssl-hint.js';
 
 const PUBLIC_KEY_PATH = '/.well-known/appspecific/com.tesla.3p.public-key.pem';
 
@@ -109,6 +110,7 @@ async function handleRegister(config, store, cloudflare, req, res) {
 
 async function main() {
   const config = getConfig();
+  printCloudflareSslHints(config.oauthHost, config.baseDomain);
   const tls = loadTlsCredentials(config.tlsKeyPath, config.tlsCertPath);
   const store = createStore(config.storePath);
   const cloudflare = createCloudflareClient(config);

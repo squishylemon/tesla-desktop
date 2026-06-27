@@ -62,6 +62,8 @@ curl -k https://localhost:8443/health
 
 With Cloudflare proxy, set SSL mode to **Full** (origin speaks HTTPS).
 
+**Cloudflare SSL note:** free Universal SSL only covers `*.example.com`, not `auth.tesla.example.com` when your zone is `example.com`. Use a [delegated subdomain zone](relay/README.md#dns-and-cloudflare-ssl-important) or flat single-level hostnames — otherwise browsers show `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`.
+
 ```bash
 cd tesla-desktop-relay
 docker compose -f compose.yml up -d --force-recreate
