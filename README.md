@@ -6,66 +6,80 @@ Not affiliated with Tesla, Inc.
 
 ## What you need
 
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- A [Tesla developer account](https://developer.tesla.com) with a Fleet API application, billing set up, and these scopes: `openid`, `offline_access`, `user_data`, `vehicle_device_data`, `vehicle_location`, `vehicle_cmds`, `vehicle_charging_cmds`
-- A relay URL (`RELAY_API_URL`) — run your own with the cloud install below, or use one provided by your operator
-
-Vehicle commands require virtual key pairing in the Tesla app.
+- [Docker](https://docs.docker.com/get-docker/)
+- A [Tesla developer account](https://developer.tesla.com) with a Fleet API application
+- A relay URL (`RELAY_API_URL`) — run your own (below) or use one from your operator
 
 ## Install
 
-### Home install (Tesla Desktop)
+### Tesla Desktop (home)
+
+One command:
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-desktop.sh | sh -s -- --relay-url https://auth.yourdomain.com
+```
+
+Pulls `ghcr.io/squishylemon/tesla-desktop/desktop:latest`, starts the stack, opens at `https://localhost:4321`.
+
+Setup:
+
+1. Connect to the relay
+2. Add the shown URLs to [developer.tesla.com](https://developer.tesla.com)
+3. Enter your Client ID and Secret
+4. Register domain, sign in, pair virtual key
+
+---
+
+### Relay (operator)
+
+One command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-relay.sh | sh
+```
+
+Pulls `ghcr.io/squishylemon/tesla-desktop/relay:latest`. Edit `tesla-desktop-relay/.env`, point DNS at your server, recreate the container.
+
+```bash
+cd tesla-desktop-relay
+docker compose -f compose.yml up -d --force-recreate
+```
+
+See [relay/README.md](relay/README.md) for `ALLOWED_IPS`, Cloudflare, and cleanup settings.
+
+---
+
+### From source (developers)
+
+```bash
+git clone https://github.com/squishylemon/tesla-desktop.git
+cd tesla-desktop
 cp .env.example .env
 docker compose up --build
 ```
 
-Set `RELAY_API_URL` in `.env` to your relay (e.g. `https://auth.tesla-desktop.example.com`).
+Relay from source:
 
-Open `https://localhost:4321` and accept the self-signed certificate warning.
-
-Setup flow:
-
-1. Connect to the relay — creates your instance subdomain and uploads your public key
-2. Copy the generated URLs into your app on [developer.tesla.com](https://developer.tesla.com) (Allowed Origin + Redirect URL)
-3. Enter your Client ID and Secret
-4. Register domain with Tesla
-5. Sign in and pair your virtual key from the garage page
-
-You browse the app at localhost. Tesla OAuth and partner registration go through the relay.
+```bash
+cp relay/.env.example relay/.env
+docker compose --profile cloudsetup up --build -d
+```
 
 ---
 
-### Cloud install (relay)
+## Docker images
 
-For operators hosting the shared domain.
+Published to GitHub Container Registry on push to `main` and on version tags (`v*`):
 
-```bash
-npm run cloudsetup
-```
+| Image | Use |
+|-------|-----|
+| `ghcr.io/squishylemon/tesla-desktop/desktop:latest` | Home install |
+| `ghcr.io/squishylemon/tesla-desktop/relay:latest` | Relay operator |
 
-Edit `relay/.env`, then point DNS at your server:
+After the first workflow run, set each package to **public** under GitHub → Packages → Package settings → Change visibility.
 
-```
-auth.tesla-desktop.example.com  →  your server
-```
-
-On [developer.tesla.com](https://developer.tesla.com), each home user adds the relay URLs to **their own** Tesla application. The relay operator does not need a Fleet API app in `relay/.env`.
-
-Relay commands:
-
-```bash
-docker compose --profile cloudsetup logs -f relay
-docker compose --profile cloudsetup down
-curl http://localhost:8443/health
-```
-
-More detail: [relay/README.md](relay/README.md)
-
----
-
-## Local development (without Docker)
+## Local development
 
 ```bash
 npm install
@@ -73,8 +87,6 @@ cp .env.example .env
 npm run build
 node scripts/start-https.mjs
 ```
-
-Requires OpenSSL on your PATH.
 
 ## License
 

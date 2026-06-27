@@ -1,0 +1,71 @@
+# Tesla Desktop — pull-only stack (no local build)
+# Used by scripts/install-desktop.sh
+
+services:
+  init:
+    image: alpine:3.20
+    volumes:
+      - tesla-data:/data
+    command:
+      - sh
+      - -c
+      - |
+        apk add --no-cache openssl
+        mkdir -p /data/keys
+        if [ ! -f /data/keys/fleet-key.pem ]; then
+          openssl ecparam -name prime256v1 -genkey -noout -out /data/keys/fleet-key.pem
+          openssl ec -in /data/keys/fleet-key.pem -pubout -out /data/keys/fleet-key.pub.pem
+        fi
+        if [ ! -f /data/tls-key.pem ]; then
+          openssl req -x509 -nodes -newkey ec \
+            -pkeyopt ec_paramgen_curve:prime256v1 -pkeyopt ec_param_enc:named_curve \
+            -subj "/CN=localhost" -keyout /data/tls-key.pem -out /data/tls-cert.pem -sha256 -days 3650
+        fi
+        cp -f /data/keys/fleet-key.pem /data/fleet-key.pem
+        chmod 755 /data /data/keys
+        chmod 644 /data/keys/*.pem /data/*.pem 2>/dev/null || true
+    restart: "no"
+
+  vehicle-command:
+    image: tesla/vehicle-command:latest
+    user: "0:0"
+    volumes:
+      - tesla-data:/config
+    ports:
+      - "127.0.0.1:4443:4443"
+    command: >
+      -tls-key /config/tls-key.pem
+      -cert /config/tls-cert.pem
+      -key-file /config/fleet-key.pem
+      -host 0.0.0.0
+      -port 4443
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  app:
+    image: ${TESLA_DESKTOP_IMAGE:-ghcr.io/squishylemon/tesla-desktop/desktop:latest}
+    ports:
+      - "${APP_PORT:-4321}:4321"
+    volumes:
+      - tesla-data:/data
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+      HOST: 0.0.0.0
+      PORT: 4321
+      ENABLE_HTTPS: "true"
+      TESLA_TLS_HOSTNAME: ${TESLA_TLS_HOSTNAME:-localhost}
+      VEHICLE_COMMAND_PROXY_URL: https://vehicle-command:4443
+      VEHICLE_COMMAND_PROXY_CA: /data/tls-cert.pem
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      vehicle-command:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  tesla-data:

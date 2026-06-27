@@ -58,4 +58,26 @@
   .tesla-badge-offline {
     @apply tesla-badge bg-white/5 text-tesla-muted;
   }
+
+  .vehicle-hero-viewport {
+    @apply relative flex h-[min(50vh,420px)] w-full items-center justify-center overflow-hidden rounded-xl border border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent;
+  }
+
+  .vehicle-hero-viewport--image {
+    @apply px-6 py-4;
+  }
+
+  .vehicle-model-viewport {
+    @apply relative h-full w-full;
+  }
+
+  .vehicle-model-viewport canvas {
+    @apply block h-full w-full;
+    touch-action: none;
+    pointer-events: none;
+  }
+
+  .vehicle-model-viewport__status {
+    @apply absolute inset-0 flex items-center justify-center;
+  }
 }

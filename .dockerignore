@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+node_modules
+dist
+data
+relay-data
+relay
+*.md
+imgs
+.agent
+.cursor

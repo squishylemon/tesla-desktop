@@ -1,57 +1,45 @@
 # Tesla Desktop Relay
 
-Hosts your domain for home Tesla Desktop installs. Home users browse `localhost:4321`; the relay handles instance subdomains, public key hosting, and OAuth callbacks.
+Docker image: `ghcr.io/squishylemon/tesla-desktop/relay:latest`
 
-## Quick start
+## Install
 
 ```bash
-npm run cloudsetup
+curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-relay.sh | sh
 ```
 
-Edit `relay/.env`, then put the relay behind HTTPS on port 443 (Caddy, nginx, or Cloudflare proxy).
+Creates `tesla-desktop-relay/`, pulls the image, starts the container.
 
-## relay/.env
+Edit `tesla-desktop-relay/.env`:
 
 ```env
-ALLOWED_IPS=*                              # who can register new instances
+ALLOWED_IPS=*
 RELAY_BASE_DOMAIN=tesla-desktop.example.com
 RELAY_OAUTH_HOST=auth.tesla-desktop.example.com
 CLOUDFLARE_API_TOKEN=...
 CLOUDFLARE_ZONE_ID=...
-RELAY_DNS_TARGET=<this server's public IPv4>
+RELAY_DNS_TARGET=<your server public IPv4>
 RELAY_INACTIVITY_DAYS=30
 RELAY_CLEANUP_INTERVAL_HOURS=6
 ```
 
-`ALLOWED_IPS`: `*` for public use, or your IP / CIDR to restrict new registrations.
+Apply changes:
+
+```bash
+cd tesla-desktop-relay
+docker compose -f compose.yml up -d --force-recreate
+```
 
 ## DNS
 
-One fixed record for OAuth callbacks:
-
 ```
-auth.tesla-desktop.example.com  →  your relay server
+auth.yourdomain.com  →  your relay server
 ```
 
-Per-instance records (`abc123.yourdomain.com`) are created automatically via Cloudflare.
+Instance subdomains (`abc123.yourdomain.com`) are created automatically via Cloudflare.
 
-## Tesla developer portal
+## Home installs
 
-Each home user adds these to **their own** Tesla app (shown during setup):
+Users set `RELAY_API_URL=https://auth.yourdomain.com` when installing Tesla Desktop.
 
-| Field | Value |
-|-------|-------|
-| Allowed Origin | `https://auth.yourdomain.com` |
-| Redirect URL | `https://auth.yourdomain.com/auth/callback` |
-
-## Cleanup
-
-No heartbeat for `RELAY_INACTIVITY_DAYS` (default 30) → DNS record and instance data removed. Cleanup runs every `RELAY_CLEANUP_INTERVAL_HOURS` (default 6).
-
-## Commands
-
-```bash
-docker compose --profile cloudsetup up --build -d
-docker compose --profile cloudsetup logs -f relay
-curl http://localhost:8443/health
-```
+Each user adds the relay Allowed Origin and Redirect URL to their own Tesla developer application during setup.

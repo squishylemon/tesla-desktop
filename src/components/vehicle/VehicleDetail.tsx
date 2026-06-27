@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import BatteryRing from '@/components/vehicle/BatteryRing';
 import ChargingPanel from '@/components/vehicle/ChargingPanel';
 import ClimatePanel from '@/components/vehicle/ClimatePanel';
+import VehicleHero from '@/components/vehicle/VehicleHero';
 import { getFreshness } from '@/lib/tesla/cache';
-import { getVehiclePlaceholder } from '@/lib/tesla/vehicle-images';
 import type { VehicleData, VehicleListItem } from '@/lib/tesla/types';
 
 interface DetailData {
@@ -81,7 +81,6 @@ export default function VehicleDetail({ vin }: Props) {
   const { vehicle, data, fetchedAt, keyPaired } = detail;
   const freshness = getFreshness(vehicle.state, fetchedAt);
   const charging = data?.charge_state?.charging_state === 'Charging';
-  const image = getVehiclePlaceholder(data?.vehicle_config, charging);
   const name = vehicle.display_name || data?.display_name || 'My Tesla';
   const battery = data?.charge_state?.battery_level ?? 0;
 
@@ -127,11 +126,13 @@ export default function VehicleDetail({ vin }: Props) {
         </div>
       )}
 
-      <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
-        <div className="flex flex-1 flex-col items-center">
-          <img src={image} alt={name} className="max-h-56 object-contain animate-float" />
-        </div>
-        <div className="flex flex-col items-center gap-4">
+      <div className="mb-8">
+        <VehicleHero
+          config={data?.vehicle_config}
+          charging={charging}
+          name={name}
+        />
+        <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-8">
           {data?.charge_state && (
             <BatteryRing level={battery} charging={charging} />
           )}

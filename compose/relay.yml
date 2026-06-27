@@ -1,0 +1,20 @@
+# Tesla Desktop Relay — pull-only (no local build)
+# Used by scripts/install-relay.sh
+
+services:
+  relay:
+    image: ${TESLA_DESKTOP_RELAY_IMAGE:-ghcr.io/squishylemon/tesla-desktop/relay:latest}
+    ports:
+      - "${RELAY_PORT:-8443}:8443"
+    volumes:
+      - relay-data:/data
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+      HOST: 0.0.0.0
+      PORT: 8443
+    restart: unless-stopped
+
+volumes:
+  relay-data:
