@@ -14,6 +14,15 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# shellcheck source=lib/docker.sh
+. "$(dirname "$0")/lib/docker.sh" 2>/dev/null || {
+  _DOCKER_LIB="$(mktemp 2>/dev/null || echo /tmp/tesla-desktop-docker.sh)"
+  curl -fsSL "${RAW}/scripts/lib/docker.sh" -o "$_DOCKER_LIB"
+  # shellcheck source=/dev/null
+  . "$_DOCKER_LIB"
+  rm -f "$_DOCKER_LIB"
+}
+
 if [ -z "$RELAY_API_URL" ]; then
   echo "RELAY_API_URL is required."
   echo ""
@@ -41,10 +50,10 @@ echo "RELAY_API_URL=${RELAY_API_URL}" >> .env.tmp
 mv .env.tmp .env
 
 echo "Pulling images..."
-docker compose -f compose.yml pull
+docker_compose -f compose.yml pull
 
 echo "Starting Tesla Desktop..."
-docker compose -f compose.yml up -d
+docker_compose -f compose.yml up -d
 
 echo ""
 echo "Tesla Desktop: https://localhost:4321"

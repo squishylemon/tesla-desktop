@@ -14,11 +14,13 @@ Not affiliated with Tesla, Inc.
 
 ### Tesla Desktop (home)
 
-One command:
+One command (no `sudo` on curl):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-desktop.sh | sh -s -- --relay-url https://auth.yourdomain.com
 ```
+
+If Docker permission fails, see the relay section below for `usermod` / `DOCKER_CMD`.
 
 Pulls `ghcr.io/squishylemon/tesla-desktop/desktop:latest`, starts the stack, opens at `https://localhost:4321`.
 
@@ -33,10 +35,23 @@ Setup:
 
 ### Relay (operator)
 
-One command:
+One command (no `sudo` on curl):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-relay.sh | sh
+```
+
+If Docker says `permission denied` on `/var/run/docker.sock`:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+Then run the install again without `sudo`. One-off alternative:
+
+```bash
+DOCKER_CMD="sudo docker" curl -fsSL https://raw.githubusercontent.com/squishylemon/tesla-desktop/main/scripts/install-relay.sh | sh
 ```
 
 Pulls `ghcr.io/squishylemon/tesla-desktop/relay:latest`. Edit `tesla-desktop-relay/.env`, point DNS at your server, recreate the container.
@@ -78,6 +93,8 @@ Published to GitHub Container Registry on push to `main` and on version tags (`v
 | `ghcr.io/squishylemon/tesla-desktop/relay:latest` | Relay operator |
 
 After the first workflow run, set each package to **public** under GitHub → Packages → Package settings → Change visibility.
+
+If pull fails with `denied` from `ghcr.io` (not docker.sock), the image is still private — make the package public or run `docker login ghcr.io`.
 
 ## Local development
 

@@ -12,6 +12,15 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# shellcheck source=lib/docker.sh
+. "$(dirname "$0")/lib/docker.sh" 2>/dev/null || {
+  _DOCKER_LIB="$(mktemp 2>/dev/null || echo /tmp/tesla-desktop-docker.sh)"
+  curl -fsSL "${RAW}/scripts/lib/docker.sh" -o "$_DOCKER_LIB"
+  # shellcheck source=/dev/null
+  . "$_DOCKER_LIB"
+  rm -f "$_DOCKER_LIB"
+}
+
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
@@ -29,10 +38,10 @@ if [ ! -f .env ]; then
 fi
 
 echo "Pulling image..."
-docker compose -f compose.yml pull
+docker_compose -f compose.yml pull
 
 echo "Starting relay..."
-docker compose -f compose.yml up -d
+docker_compose -f compose.yml up -d
 
 echo ""
 echo "Relay is running on port ${RELAY_PORT:-8443}"
